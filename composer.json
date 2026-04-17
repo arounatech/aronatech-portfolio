@@ -1,0 +1,9 @@
+{
+  "name": "aronatech/portfolio-contact-api",
+  "description": "SMTP contact API for AronaTech portfolio shared hosting deployments.",
+  "type": "project",
+  "require": {
+    "php": ">=8.0",
+    "phpmailer/phpmailer": "^6.9"
+  }
+}

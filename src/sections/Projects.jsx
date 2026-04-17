@@ -28,17 +28,18 @@ export default function Projects() {
       <div className="container">
         <h2
           className={`section-title ${
-            visible ? "animate__animated animate__fadeInUp" : "anim-hidden"
+            visible ? "reveal reveal-up is-visible" : "reveal reveal-up"
           }`}
+          style={{ "--delay": "40ms" }}
         >
           Projects
         </h2>
         <div className="divider" />
         <p
           className={`section-subtitle ${
-            visible ? "animate__animated animate__fadeIn" : "anim-hidden"
+            visible ? "reveal reveal-fade is-visible" : "reveal reveal-fade"
           }`}
-          style={{ animationDelay: "0.1s" }}
+          style={{ "--delay": "120ms" }}
         >
           A selection of systems I&apos;ve designed, built, and shipped.
         </p>
@@ -46,9 +47,9 @@ export default function Projects() {
         {/* Filter tags */}
         <div
           className={`projects__filters ${
-            visible ? "animate__animated animate__fadeIn" : "anim-hidden"
+            visible ? "reveal reveal-fade is-visible" : "reveal reveal-fade"
           }`}
-          style={{ animationDelay: "0.2s" }}
+          style={{ "--delay": "180ms" }}
         >
           {allTags.map((t) => (
             <button
@@ -67,9 +68,9 @@ export default function Projects() {
             <article
               key={project.name}
               className={`glass-card project-card ${
-                visible ? "animate__animated animate__fadeInUp" : "anim-hidden"
+                visible ? "reveal reveal-up is-visible" : "reveal reveal-up"
               }`}
-              style={{ animationDelay: `${0.15 * i + 0.25}s` }}
+              style={{ "--delay": `${Math.round(150 * i + 260)}ms` }}
             >
               {project.image ? (
                 <div className="project-card__img-wrapper">

@@ -1,6 +1,6 @@
+import { lazy, Suspense } from "react";
 import PORTFOLIO from "../config/constants";
 import useInView from "../hooks/useInView";
-import RadarChart from "../components/RadarChart";
 import {
   Server,
   Code2,
@@ -9,6 +9,8 @@ import {
   Shield,
   Database,
 } from "lucide-react";
+
+const RadarChart = lazy(() => import("../components/RadarChart"));
 
 const GROUP_ICONS = {
   "Server Stacks": Server,
@@ -28,17 +30,18 @@ export default function Skills() {
       <div className="container">
         <h2
           className={`section-title ${
-            visible ? "animate__animated animate__fadeInUp" : "anim-hidden"
+            visible ? "reveal reveal-up is-visible" : "reveal reveal-up"
           }`}
+          style={{ "--delay": "40ms" }}
         >
           Skills &amp; Expertise
         </h2>
         <div className="divider" />
         <p
           className={`section-subtitle ${
-            visible ? "animate__animated animate__fadeIn" : "anim-hidden"
+            visible ? "reveal reveal-fade is-visible" : "reveal reveal-fade"
           }`}
-          style={{ animationDelay: "0.15s" }}
+          style={{ "--delay": "120ms" }}
         >
           A snapshot of my technical toolkit — backend-first, security-minded.
         </p>
@@ -46,11 +49,13 @@ export default function Skills() {
         {/* D3 Radar Chart */}
         <div
           className={`skills__radar-wrapper ${
-            visible ? "animate__animated animate__zoomIn" : "anim-hidden"
+            visible ? "reveal reveal-scale is-visible" : "reveal reveal-scale"
           }`}
-          style={{ animationDelay: "0.2s" }}
+          style={{ "--delay": "180ms" }}
         >
-          <RadarChart skills={radarSkills} />
+          <Suspense fallback={<div className="skills__radar-skeleton" />}>
+            <RadarChart skills={radarSkills} />
+          </Suspense>
         </div>
 
         {/* Skill group cards with icons + animated bars */}
@@ -61,9 +66,9 @@ export default function Skills() {
               <div
                 key={group.group}
                 className={`glass-card skill-group ${
-                  visible ? "animate__animated animate__fadeInUp" : "anim-hidden"
+                  visible ? "reveal reveal-up is-visible" : "reveal reveal-up"
                 }`}
-                style={{ animationDelay: `${0.1 * gi + 0.3}s` }}
+                style={{ "--delay": `${Math.round(100 * gi + 280)}ms` }}
               >
                 <div className="skill-group__header">
                   <span className="skill-group__icon-wrap">

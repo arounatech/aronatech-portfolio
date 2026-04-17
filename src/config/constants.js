@@ -109,6 +109,7 @@ const PORTFOLIO = {
       name: "iCanada",
       description:
         "A full-stack immigration platform built with Laravel APIs and a Next.js frontend, containerized with Docker for seamless deployment and scalability.",
+      image: "/projects/icanada-immigration.webp",
       tags: ["Backend", "Full-Stack"],
       stack: ["Laravel", "Next.js", "Docker"],
       year: 2025,
@@ -117,6 +118,7 @@ const PORTFOLIO = {
       name: "Wininmin",
       description:
         "Live-streaming platform featuring a custom RTMP server implementation, powered by a Laravel backend and Next.js frontend for real-time content delivery.",
+      image: "/projects/wininmin-streaming.webp",
       tags: ["Backend", "Full-Stack", "Streaming"],
       stack: ["Laravel", "Next.js", "Custom RTMP"],
       year: 2025,
@@ -125,6 +127,7 @@ const PORTFOLIO = {
       name: "Overlord Team",
       description:
         "Corporate web platform for Overlord Team LTD., built with a Go backend for high-performance APIs and a Next.js frontend delivering a fast, modern user experience.",
+      image: "/projects/overlord-corporate.webp",
       tags: ["Backend", "Full-Stack"],
       stack: ["Next.js", "Golang"],
       domain: "https://overlord.team",
@@ -134,6 +137,7 @@ const PORTFOLIO = {
       name: "Planio",
       description:
         "A self-developed task and project management system with boards, checklists, and team collaboration features, built on a CodeIgniter backend and Angular frontend.",
+      image: "/projects/planio-kanban.webp",
       tags: ["Full-Stack", "Productivity"],
       stack: ["Angular", "CodeIgniter"],
       year: 2024,
@@ -142,6 +146,7 @@ const PORTFOLIO = {
       name: "Personal Accounter",
       description:
         "A personal accounting and finance tracking application built on a custom DDD-based PHP framework designed and developed from scratch.",
+      image: "/projects/personal-accounter.webp",
       tags: ["Backend", "Open-Source"],
       stack: ["PHP", "Custom DDD Framework"],
       domain: "https://github.com/moonshadowrev/PersonalAccounter",
@@ -151,6 +156,7 @@ const PORTFOLIO = {
       name: "FCM Panel",
       description:
         "A Firebase Cloud Messaging management panel for sending and scheduling push notifications, built with Express.js.",
+      image: "/projects/fcm-panel-notifications.webp",
       tags: ["Backend", "Open-Source"],
       stack: ["Express.js"],
       domain: "https://github.com/moonshadowrev/FCMPanel",
@@ -178,6 +184,7 @@ const PORTFOLIO = {
     fields: {
       name: "Your Name",
       email: "Email Address",
+      subject: "Subject",
       message: "Message",
     },
     submitLabel: "Send Message",

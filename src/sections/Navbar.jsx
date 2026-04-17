@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import PORTFOLIO from "../config/constants";
 import { FileDown } from "lucide-react";
-import generateResumePDF from "../utils/generateResumePDF";
+import downloadResume from "../utils/downloadResume";
 
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
@@ -42,7 +42,10 @@ export default function Navbar() {
             <button
               type="button"
               className="glass-btn glass-btn--accent navbar__cta"
-              onClick={() => { closeMenu(); generateResumePDF(); }}
+              onClick={() => {
+                closeMenu();
+                downloadResume();
+              }}
             >
               <FileDown size={16} /> Resume
             </button>

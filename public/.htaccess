@@ -1,0 +1,18 @@
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+
+  # API endpoint shortcut: /api/contact -> /api/contact.php
+  RewriteRule ^api/contact/?$ api/contact.php [L,QSA]
+
+  # Serve real files/directories directly.
+  RewriteCond %{REQUEST_FILENAME} -f [OR]
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^ - [L]
+
+  # SPA fallback.
+  RewriteRule . index.html [L]
+</IfModule>
+
+<FilesMatch "(^\.env|composer\.(json|lock)|package\.json|package-lock\.json)$">
+  Require all denied
+</FilesMatch>
