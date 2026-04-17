@@ -164,59 +164,6 @@ The portfolio includes a client-side resume generator (`src/utils/generateResume
 The download button is available in the **Hero section** and in the **mobile navigation menu**.
 
 ---
-
-## Deployment
-
-The project outputs a static `dist/` folder after `npm run build`. Deploy to any static host:
-
-| Platform | Command / Method |
-|---|---|
-| Vercel | `vercel --prod` |
-| Netlify | Drag `dist/` or connect repo |
-| Cloudflare Pages | Connect repo, build command: `npm run build`, output: `dist` |
-| GitHub Pages | Use `gh-pages` or Actions workflow |
-
-### Shared Hosting (Hostinger) - PHP Mail API
-
-The contact API depends on Composer + SMTP variables:
-
-1. Install PHP dependencies on the server (or locally, then upload `vendor/`):
-   - `composer install --no-dev --optimize-autoloader`
-2. Create a `.env.mail` file (or set server env vars) using `.env.mail.example` keys:
-   - `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`
-   - `MAIL_ENCRYPTION`, `MAIL_FROM_ADDRESS`, `MAIL_FROM_NAME`
-   - `MAIL_TO_ADDRESS`, `MAIL_TO_NAME`
-3. Upload:
-   - `dist/` contents to `public_html/`
-   - `public/api/contact.php` to `public_html/api/contact.php`
-   - `public/.htaccess` to `public_html/.htaccess`
-   - Composer `vendor/` so autoload is available near your deployed API
-
-`public/api/contact.php` supports both:
-- server-level environment variables (preferred), and
-- `.env.mail` fallback for shared hosting where env vars are unavailable.
-
-### Build-time mail env check
-
-`npm run build` now runs `scripts/ensure-mail-env.mjs` first.
-
-- If required `MAIL_*` values are missing, it asks for them interactively and writes `.env.mail`.
-- In non-interactive environments, build fails fast when required mail keys are missing.
-
-### Shared-hosting dist output
-
-`npm run build` now also packages a shared-hosting-ready structure:
-
-- `dist/public_html/` -> upload this directory as your web root contents
-- `dist/.env.mail` -> keep one level above `public_html`
-- `dist/vendor/` -> copied from local `vendor/` when available
-- `dist/composer.json` -> included for server-side Composer install
-- `dist/DEPLOY_STRUCTURE.txt` -> quick deploy map
-
-If local `vendor/` is missing, `dist/VENDOR_MISSING.txt` is generated with next steps.
-
----
-
 ## License
 
 This project is proprietary to **Arona Tech** All rights reserved.
