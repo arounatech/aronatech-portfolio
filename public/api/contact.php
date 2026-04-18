@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 header('Content-Type: application/json; charset=utf-8');
 header('X-Content-Type-Options: nosniff');
+header('X-Frame-Options: DENY');
+header('Referrer-Policy: no-referrer');
+header("Content-Security-Policy: default-src 'none'; frame-ancestors 'none'; base-uri 'none';");
 
 /**
  * Shared-hosting friendly environment loader.
@@ -81,6 +84,47 @@ function envValue(string $key, string $default = ''): string
     return $default;
 }
 
+function envBool(string $key, bool $default = false): bool
+{
+    $value = strtolower(envValue($key, $default ? 'true' : 'false'));
+    return in_array($value, ['1', 'true', 'yes', 'on'], true);
+}
+
+function sanitizeLine(string $value, int $maxLen): string
+{
+    $clean = trim(str_replace(["\r", "\n"], ' ', strip_tags($value)));
+    return mb_substr($clean, 0, $maxLen);
+}
+
+function sanitizeMessage(string $value, int $maxLen): string
+{
+    $clean = trim(str_replace("\0", '', $value));
+    return mb_substr($clean, 0, $maxLen);
+}
+
+function requestOriginAllowed(): bool
+{
+    $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+    if ($origin === '') {
+        return true;
+    }
+
+    $originHost = parse_url($origin, PHP_URL_HOST);
+    $currentHost = $_SERVER['HTTP_HOST'] ?? '';
+    if ($originHost && $currentHost && strcasecmp($originHost, $currentHost) === 0) {
+        return true;
+    }
+
+    $allowed = array_filter(array_map('trim', explode(',', envValue('MAIL_ALLOWED_ORIGINS', ''))));
+    foreach ($allowed as $item) {
+        if (strcasecmp($item, $origin) === 0 || strcasecmp($item, (string) $originHost) === 0) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 function respond(int $status, string $message, array $extra = []): void
 {
     http_response_code($status);
@@ -88,9 +132,31 @@ function respond(int $status, string $message, array $extra = []): void
     exit;
 }
 
+function appIsProduction(): bool
+{
+    $env = strtolower(envValue('MAIL_APP_ENV', envValue('APP_ENV', 'production')));
+    return !in_array($env, ['dev', 'development', 'local', 'test', 'testing'], true);
+}
+
+function failResponse(int $status, string $devMessage, string $prodMessage = 'Failed to send message.'): void
+{
+    if (appIsProduction()) {
+        respond($status, $prodMessage);
+    }
+    respond($status, $devMessage);
+}
+
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     header('Allow: POST');
-    respond(405, 'Method not allowed.');
+    failResponse(405, 'Method not allowed.');
+}
+
+if (!requestOriginAllowed()) {
+    failResponse(403, 'Forbidden origin.');
+}
+
+if (((int) ($_SERVER['CONTENT_LENGTH'] ?? 0)) > 20000) {
+    failResponse(413, 'Payload too large.');
 }
 
 if (empty($_SERVER['HTTPS']) || $_SERVER['HTTPS'] === 'off') {
@@ -105,31 +171,25 @@ if (!is_array($payload)) {
     $payload = $_POST;
 }
 
-$name = trim((string) ($payload['name'] ?? ''));
+$name = sanitizeLine((string) ($payload['name'] ?? ''), 120);
 $email = trim((string) ($payload['email'] ?? ''));
-$subject = trim((string) ($payload['subject'] ?? ''));
-$message = trim((string) ($payload['message'] ?? ''));
-$website = trim((string) ($payload['website'] ?? ''));
-
-if ($website !== '') {
-    // Honeypot field: pretend success without sending.
-    respond(200, 'Message accepted.');
-}
+$subject = sanitizeLine((string) ($payload['subject'] ?? ''), 180);
+$message = sanitizeMessage((string) ($payload['message'] ?? ''), 2000);
 
 if ($name === '' || mb_strlen($name) < 2 || mb_strlen($name) > 120) {
-    respond(422, 'Invalid sender name.');
+    failResponse(422, 'Invalid sender name.');
 }
 
 if (!filter_var($email, FILTER_VALIDATE_EMAIL) || mb_strlen($email) > 180) {
-    respond(422, 'Invalid sender email.');
+    failResponse(422, 'Invalid sender email.');
 }
 
 if ($subject === '' || mb_strlen($subject) < 4 || mb_strlen($subject) > 180) {
-    respond(422, 'Invalid subject.');
+    failResponse(422, 'Invalid subject.');
 }
 
 if ($message === '' || mb_strlen($message) < 12 || mb_strlen($message) > 2000) {
-    respond(422, 'Invalid message body.');
+    failResponse(422, 'Invalid message body.');
 }
 
 $clientIp = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
@@ -150,11 +210,11 @@ if (is_file($rateFile)) {
 }
 
 if (!empty($requestTimes) && (time() - end($requestTimes)) < $cooldownSeconds) {
-    respond(429, 'Please wait a few seconds before trying again.');
+    failResponse(429, 'Please wait a few seconds before trying again.');
 }
 
 if (count($requestTimes) >= $maxRequests) {
-    respond(429, 'Too many requests. Please try again later.');
+    failResponse(429, 'Too many requests. Please try again later.');
 }
 
 $requestTimes[] = time();
@@ -175,14 +235,20 @@ foreach ($autoloadCandidates as $candidate) {
 }
 
 if ($autoloadPath === null) {
-    respond(500, 'Mail dependency is missing. Install PHPMailer with Composer.');
+    failResponse(500, 'Mail dependency is missing. Install PHPMailer with Composer.');
 }
 
 require_once $autoloadPath;
 
 if (!class_exists(\PHPMailer\PHPMailer\PHPMailer::class)) {
-    respond(500, 'PHPMailer not available.');
+    failResponse(500, 'PHPMailer not available.');
 }
+
+$templatePath = __DIR__ . '/templates/mailTemplates.php';
+if (!is_file($templatePath)) {
+    failResponse(500, 'Mail templates are missing.');
+}
+require_once $templatePath;
 
 loadMailEnv();
 
@@ -190,52 +256,93 @@ $smtpHost = envValue('MAIL_HOST');
 $smtpPort = (int) envValue('MAIL_PORT', '587');
 $smtpUser = envValue('MAIL_USERNAME');
 $smtpPass = envValue('MAIL_PASSWORD');
-$smtpEncryption = strtolower(envValue('MAIL_ENCRYPTION', 'tls'));
+$smtpEncryption = strtolower(envValue('MAIL_ENCRYPTION', 'none'));
+$smtpAuth = envBool('MAIL_SMTP_AUTH', false);
 $fromAddress = envValue('MAIL_FROM_ADDRESS', $smtpUser);
-$fromName = envValue('MAIL_FROM_NAME', 'Portfolio Contact');
-$toAddress = envValue('MAIL_TO_ADDRESS', $fromAddress);
-$toName = envValue('MAIL_TO_NAME', 'Portfolio Owner');
+$fromName = envValue('MAIL_FROM_NAME', 'AronaTech Portfolio');
+$siteName = envValue('MAIL_SITE_NAME', 'AronaTech Portfolio');
+$siteUrl = envValue('MAIL_SITE_URL', 'https://' . ($_SERVER['HTTP_HOST'] ?? 'localhost'));
 
-if ($smtpHost === '' || $smtpUser === '' || $smtpPass === '' || $fromAddress === '' || $toAddress === '') {
-    respond(500, 'SMTP settings are incomplete on the server.');
+if ($smtpHost === '' || $fromAddress === '') {
+    failResponse(500, 'SMTP settings are incomplete on the server.');
+}
+
+if ($smtpAuth && ($smtpUser === '' || $smtpPass === '')) {
+    failResponse(500, 'SMTP auth is enabled but username/password are missing.');
 }
 
 try {
-    $mail = new \PHPMailer\PHPMailer\PHPMailer(true);
-    $mail->isSMTP();
-    $mail->Host = $smtpHost;
-    $mail->Port = $smtpPort;
-    $mail->SMTPAuth = true;
-    $mail->Username = $smtpUser;
-    $mail->Password = $smtpPass;
-    $mail->CharSet = 'UTF-8';
+    $submittedAt = gmdate('Y-m-d H:i:s \U\T\C');
+    $userAgent = sanitizeLine((string) ($_SERVER['HTTP_USER_AGENT'] ?? 'unknown'), 350);
 
-    if ($smtpEncryption === 'ssl') {
-        $mail->SMTPSecure = \PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_SMTPS;
-    } else {
-        $mail->SMTPSecure = \PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_STARTTLS;
-    }
+    $templateData = [
+        'name' => $name,
+        'email' => $email,
+        'subject' => $subject,
+        'message' => $message,
+        'ip' => $clientIp,
+        'userAgent' => $userAgent,
+        'submittedAt' => $submittedAt,
+        'siteName' => $siteName,
+        'siteUrl' => $siteUrl,
+    ];
 
-    $mail->setFrom($fromAddress, $fromName);
-    $mail->addAddress($toAddress, $toName);
-    $mail->addReplyTo($email, $name);
-    $mail->Subject = '[Portfolio Contact] ' . $subject;
-    $mail->isHTML(false);
+    $ownerTemplate = buildOwnerNotificationTemplate($templateData);
+    $senderTemplate = buildSenderConfirmationTemplate($templateData);
 
-    $safeMessage = preg_replace("/\r\n|\r|\n/", PHP_EOL, $message) ?: $message;
-    $body = "You received a new portfolio contact message." . PHP_EOL . PHP_EOL
-        . "Name: {$name}" . PHP_EOL
-        . "Email: {$email}" . PHP_EOL
-        . "Subject: {$subject}" . PHP_EOL
-        . "IP: {$clientIp}" . PHP_EOL
-        . "Timestamp: " . gmdate('c') . PHP_EOL . PHP_EOL
-        . "Message:" . PHP_EOL
-        . $safeMessage . PHP_EOL;
+    $configureMailer = static function (\PHPMailer\PHPMailer\PHPMailer $mail) use (
+        $smtpHost,
+        $smtpPort,
+        $smtpAuth,
+        $smtpUser,
+        $smtpPass,
+        $smtpEncryption
+    ): void {
+        $mail->isSMTP();
+        $mail->Host = $smtpHost;
+        $mail->Port = $smtpPort;
+        $mail->SMTPAuth = $smtpAuth;
+        if ($smtpAuth) {
+            $mail->Username = $smtpUser;
+            $mail->Password = $smtpPass;
+        }
+        $mail->CharSet = 'UTF-8';
+        $mail->Timeout = 15;
+        $mail->SMTPKeepAlive = false;
 
-    $mail->Body = $body;
-    $mail->send();
+        if ($smtpEncryption === 'ssl') {
+            $mail->SMTPSecure = \PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_SMTPS;
+        } elseif ($smtpEncryption === 'tls') {
+            $mail->SMTPSecure = \PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_STARTTLS;
+        } else {
+            $mail->SMTPSecure = false;
+            $mail->SMTPAutoTLS = false;
+        }
+    };
+
+    $ownerMailer = new \PHPMailer\PHPMailer\PHPMailer(true);
+    $configureMailer($ownerMailer);
+    $ownerMailer->setFrom($fromAddress, $fromName);
+    $ownerMailer->addAddress($fromAddress, $fromName);
+    $ownerMailer->addReplyTo($email, $name);
+    $ownerMailer->Subject = '[Portfolio Contact] ' . $subject;
+    $ownerMailer->isHTML(true);
+    $ownerMailer->Body = $ownerTemplate['html'];
+    $ownerMailer->AltBody = $ownerTemplate['text'];
+    $ownerMailer->send();
+
+    $senderMailer = new \PHPMailer\PHPMailer\PHPMailer(true);
+    $configureMailer($senderMailer);
+    $senderMailer->setFrom($fromAddress, $fromName);
+    $senderMailer->addAddress($email, $name);
+    $senderMailer->Subject = 'We received your message';
+    $senderMailer->isHTML(true);
+    $senderMailer->Body = $senderTemplate['html'];
+    $senderMailer->AltBody = $senderTemplate['text'];
+    $senderMailer->send();
+
     respond(200, 'Message sent successfully.');
 } catch (\Throwable $exception) {
     error_log('Portfolio mail error: ' . $exception->getMessage());
-    respond(500, 'Unable to send message right now.');
+    failResponse(500, 'Unable to send message right now.');
 }

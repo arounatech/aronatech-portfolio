@@ -1,7 +1,7 @@
 import { createElement, useMemo, useState } from "react";
 import PORTFOLIO from "../config/constants";
 import useInView from "../hooks/useInView";
-import { MapPin, Mail, Github, Linkedin, Send } from "lucide-react";
+import { MapPin, Mail, Github, Linkedin, Send, X, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { sendContactMessage } from "../utils/contactApi";
 
 export default function Contact() {
@@ -12,10 +12,15 @@ export default function Contact() {
     email: "",
     subject: "",
     message: "",
-    website: "",
   });
   const [errors, setErrors] = useState({});
-  const [status, setStatus] = useState({ type: "", message: "" });
+  const [modal, setModal] = useState({
+    open: false,
+    type: "success",
+    title: "",
+    message: "",
+    details: [],
+  });
   const [submitting, setSubmitting] = useState(false);
 
   const labels = useMemo(
@@ -28,6 +33,22 @@ export default function Contact() {
     [contact.fields]
   );
 
+  const closeModal = () =>
+    setModal((prev) => ({
+      ...prev,
+      open: false,
+    }));
+
+  const openModal = ({ type, title, message, details = [] }) => {
+    setModal({
+      open: true,
+      type,
+      title,
+      message,
+      details,
+    });
+  };
+
   const onFieldChange = (event) => {
     const { name, value } = event.target;
     setForm((prev) => ({ ...prev, [name]: value }));
@@ -38,34 +59,74 @@ export default function Contact() {
 
   const validate = () => {
     const next = {};
+    const issues = [];
     const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const cleanName = form.name.trim();
+    const cleanSubject = form.subject.trim();
+    const cleanMessage = form.message.trim();
 
-    if (!form.name.trim() || form.name.trim().length < 2) {
+    if (cleanName.includes("<") || cleanName.includes(">")) {
+      next.name = "Name contains invalid characters.";
+      issues.push("Use plain text in your name.");
+    }
+
+    if (!cleanName || cleanName.length < 2 || cleanName.length > 120) {
       next.name = "Please enter your name.";
+      issues.push("Name must be between 2 and 120 characters.");
     }
 
     if (!form.email.trim() || !emailPattern.test(form.email.trim())) {
       next.email = "Please enter a valid email.";
+      issues.push("Email address is invalid.");
     }
 
-    if (!form.subject.trim() || form.subject.trim().length < 4) {
+    if (
+      !cleanSubject ||
+      cleanSubject.length < 4 ||
+      cleanSubject.length > 180 ||
+      cleanSubject.includes("<") ||
+      cleanSubject.includes(">")
+    ) {
       next.subject = "Please add a clear subject.";
+      issues.push("Subject must be 4-180 characters without HTML.");
     }
 
-    if (!form.message.trim() || form.message.trim().length < 12) {
+    if (!cleanMessage || cleanMessage.length < 12 || cleanMessage.length > 2000) {
       next.message = "Please write a longer message.";
+      issues.push("Message must be between 12 and 2000 characters.");
     }
 
-    return next;
+    const payloadSize = new Blob([
+      JSON.stringify({
+        name: cleanName,
+        email: form.email.trim(),
+        subject: cleanSubject,
+        message: cleanMessage,
+      }),
+    ]).size;
+    if (payloadSize > 20000) {
+      next.message = "Your message is too long.";
+      issues.push("Payload exceeds safe request size.");
+    }
+
+    return { next, issues };
   };
 
   const onSubmit = async (event) => {
     event.preventDefault();
-    setStatus({ type: "", message: "" });
+    closeModal();
 
-    const nextErrors = validate();
+    const { next: nextErrors, issues } = validate();
     setErrors(nextErrors);
-    if (Object.keys(nextErrors).length > 0) return;
+    if (Object.keys(nextErrors).length > 0) {
+      openModal({
+        type: "error",
+        title: "Please review your message",
+        message: "We found a few issues in the form input.",
+        details: issues,
+      });
+      return;
+    }
 
     setSubmitting(true);
     try {
@@ -74,11 +135,11 @@ export default function Contact() {
         email: form.email.trim(),
         subject: form.subject.trim(),
         message: form.message.trim(),
-        website: form.website.trim(),
       });
 
-      setStatus({
+      openModal({
         type: "success",
+        title: "Message sent",
         message: contact.successMessage || "Thanks! Your message has been sent.",
       });
       setForm({
@@ -86,15 +147,15 @@ export default function Contact() {
         email: "",
         subject: "",
         message: "",
-        website: "",
       });
       setErrors({});
     } catch (error) {
-      setStatus({
+      openModal({
         type: "error",
+        title: "Sending failed",
         message:
           error?.message ||
-          "Message could not be sent now. Please try again later.",
+          "Failed to send message. Please try again.",
       });
     } finally {
       setSubmitting(false);
@@ -195,19 +256,6 @@ export default function Contact() {
               )}
             </div>
 
-            <div className="contact__form-row contact__honeypot">
-              <label htmlFor="website">Website</label>
-              <input
-                id="website"
-                name="website"
-                type="text"
-                tabIndex={-1}
-                autoComplete="off"
-                value={form.website}
-                onChange={onFieldChange}
-              />
-            </div>
-
             <div className="contact__form-row">
               <label className="contact__field-label" htmlFor="message">
                 {labels.message}
@@ -228,19 +276,6 @@ export default function Contact() {
                 <span className="contact__field-error">{errors.message}</span>
               )}
             </div>
-
-            {status.message && (
-              <p
-                className={`contact__status ${
-                  status.type === "success"
-                    ? "contact__status--success"
-                    : "contact__status--error"
-                }`}
-                role="status"
-              >
-                {status.message}
-              </p>
-            )}
 
             <button
               className="glass-btn glass-btn--accent contact__submit"
@@ -285,6 +320,41 @@ export default function Contact() {
           </div>
         </div>
       </div>
+
+      {modal.open && (
+        <div className="contact-modal__backdrop" role="dialog" aria-modal="true" aria-label={modal.title}>
+          <div className={`contact-modal contact-modal--${modal.type}`}>
+            <button
+              type="button"
+              className="contact-modal__close"
+              onClick={closeModal}
+              aria-label="Close modal"
+            >
+              <X size={18} />
+            </button>
+
+            <div className="contact-modal__icon" aria-hidden="true">
+              {modal.type === "success" ? <CheckCircle2 size={24} /> : <AlertTriangle size={24} />}
+            </div>
+            <h3 className="contact-modal__title">{modal.title}</h3>
+            <p className="contact-modal__message">{modal.message}</p>
+            {modal.details.length > 0 && (
+              <ul className="contact-modal__list">
+                {modal.details.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+            )}
+            <button
+              type="button"
+              className="glass-btn glass-btn--accent contact-modal__action"
+              onClick={closeModal}
+            >
+              Got it
+            </button>
+          </div>
+        </div>
+      )}
     </section>
   );
 }

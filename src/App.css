@@ -935,13 +935,6 @@
   color: #ff9f9f;
 }
 
-.contact__honeypot {
-  position: absolute;
-  left: -9999px;
-  opacity: 0;
-  pointer-events: none;
-}
-
 .contact__cards {
   display: grid;
   grid-template-columns: 1fr;
@@ -996,6 +989,87 @@ a.contact__card:hover {
   border: 1px solid rgba(108, 99, 255, 0.25);
   color: var(--accent-light);
   flex-shrink: 0;
+}
+
+.contact-modal__backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(4, 6, 18, 0.78);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  z-index: 250;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+}
+
+.contact-modal {
+  width: min(520px, 100%);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--glass-border);
+  background: linear-gradient(160deg, rgba(15, 20, 53, 0.95), rgba(10, 13, 34, 0.95));
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.55), 0 0 44px rgba(108, 99, 255, 0.2);
+  position: relative;
+  padding: 1.35rem 1.35rem 1.25rem;
+}
+
+.contact-modal__close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--glass-border);
+  color: var(--text-secondary);
+}
+
+.contact-modal__icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  margin-bottom: 0.85rem;
+  color: #fff;
+}
+
+.contact-modal--success .contact-modal__icon {
+  background: linear-gradient(135deg, #22c55e, #14b8a6);
+}
+
+.contact-modal--error .contact-modal__icon {
+  background: linear-gradient(135deg, #ef4444, #f97316);
+}
+
+.contact-modal__title {
+  font-size: 1.2rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+
+.contact-modal__message {
+  color: var(--text-secondary);
+  line-height: 1.7;
+  margin-bottom: 0.65rem;
+}
+
+.contact-modal__list {
+  margin: 0.65rem 0 1rem;
+  padding-left: 1rem;
+  color: var(--text-secondary);
+  list-style: disc;
+}
+
+.contact-modal__list li {
+  margin-bottom: 0.35rem;
+}
+
+.contact-modal__action {
+  width: 100%;
+  justify-content: center;
 }
 
 /* ── Toast ────────────────────────────────────────────────────── */

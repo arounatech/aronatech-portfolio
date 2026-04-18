@@ -9,27 +9,40 @@ const envPath = path.resolve(process.cwd(), ".env.mail");
 const required = [
   { key: "MAIL_HOST", label: "SMTP host", required: true },
   { key: "MAIL_PORT", label: "SMTP port", required: true, defaultValue: "587" },
-  { key: "MAIL_USERNAME", label: "SMTP username", required: true },
-  { key: "MAIL_PASSWORD", label: "SMTP password", required: true },
+  {
+    key: "MAIL_APP_ENV",
+    label: "Mail handler environment (production/development)",
+    required: false,
+    defaultValue: "production",
+  },
+  {
+    key: "MAIL_SMTP_AUTH",
+    label: "SMTP auth required? (true/false)",
+    required: true,
+    defaultValue: "false",
+  },
+  { key: "MAIL_USERNAME", label: "SMTP username", required: false },
+  { key: "MAIL_PASSWORD", label: "SMTP password", required: false },
   {
     key: "MAIL_ENCRYPTION",
-    label: "SMTP encryption (tls/ssl)",
+    label: "SMTP encryption (none/tls/ssl)",
     required: true,
-    defaultValue: "tls",
+    defaultValue: "none",
   },
   { key: "MAIL_FROM_ADDRESS", label: "From email", required: true },
   {
     key: "MAIL_FROM_NAME",
     label: "From name",
     required: false,
-    defaultValue: "Portfolio Contact",
+    defaultValue: "AronaTech Portfolio",
   },
-  { key: "MAIL_TO_ADDRESS", label: "Recipient email", required: true },
+  { key: "MAIL_SITE_NAME", label: "Site/brand name", required: false, defaultValue: "AronaTech Portfolio" },
+  { key: "MAIL_SITE_URL", label: "Site URL", required: false, defaultValue: "https://aronatech.cloud" },
   {
-    key: "MAIL_TO_NAME",
-    label: "Recipient name",
+    key: "MAIL_ALLOWED_ORIGINS",
+    label: "Allowed origins (comma separated, optional)",
     required: false,
-    defaultValue: "Portfolio Owner",
+    defaultValue: "",
   },
 ];
 
@@ -60,11 +73,34 @@ const fileEnv = fs.existsSync(envPath)
 
 const resolved = new Map();
 for (const item of required) {
-  const existing = process.env[item.key] ?? fileEnv.get(item.key) ?? "";
+  const existing =
+    process.env[item.key] ?? fileEnv.get(item.key) ?? item.defaultValue ?? "";
   resolved.set(item.key, existing);
 }
 
-const missing = required.filter((item) => item.required && !resolved.get(item.key));
+function hasValue(key) {
+  const value = resolved.get(key);
+  return Boolean(value && String(value).trim().length > 0);
+}
+
+function isTruthy(value) {
+  return ["1", "true", "yes", "on"].includes(String(value || "").toLowerCase());
+}
+
+function getMissingRequiredKeys() {
+  const missing = required
+    .filter((item) => item.required && !hasValue(item.key))
+    .map((item) => item.key);
+
+  if (isTruthy(resolved.get("MAIL_SMTP_AUTH"))) {
+    if (!hasValue("MAIL_USERNAME")) missing.push("MAIL_USERNAME");
+    if (!hasValue("MAIL_PASSWORD")) missing.push("MAIL_PASSWORD");
+  }
+
+  return missing;
+}
+
+const missing = getMissingRequiredKeys();
 
 if (missing.length === 0) {
   process.exit(0);
@@ -72,9 +108,9 @@ if (missing.length === 0) {
 
 if (!process.stdin.isTTY) {
   console.error(
-    `Missing required mail environment keys: ${missing
-      .map((x) => x.key)
-      .join(", ")}. Create .env.mail before building.`
+    `Missing required mail environment keys: ${missing.join(
+      ", "
+    )}. Create .env.mail before building.`
   );
   process.exit(1);
 }
@@ -90,12 +126,15 @@ try {
     const answer = (await rl.question(`${item.label}${suffix}: `)).trim();
     const finalValue = answer || current;
 
-    if (item.required && !finalValue) {
-      console.error(`Value for ${item.key} is required.`);
-      process.exit(1);
-    }
-
     resolved.set(item.key, finalValue);
+  }
+
+  const missingAfterPrompt = getMissingRequiredKeys();
+  if (missingAfterPrompt.length > 0) {
+    console.error(
+      `Missing required mail environment keys: ${missingAfterPrompt.join(", ")}`
+    );
+    process.exit(1);
   }
 } finally {
   rl.close();

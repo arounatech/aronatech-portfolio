@@ -6,6 +6,8 @@ const distDir = path.join(root, "dist");
 const publicHtmlDir = path.join(distDir, "public_html");
 const vendorSrc = path.join(root, "vendor");
 const vendorDest = path.join(distDir, "vendor");
+const apiSrc = path.join(root, "public", "api");
+const apiDest = path.join(publicHtmlDir, "api");
 const envSrc = path.join(root, ".env.mail");
 const envExampleSrc = path.join(root, ".env.mail.example");
 const envDest = path.join(distDir, ".env.mail");
@@ -34,6 +36,12 @@ for (const entry of distEntries) {
   const source = path.join(distDir, entry.name);
   const target = path.join(publicHtmlDir, entry.name);
   moveEntry(source, target);
+}
+
+// Ensure API files are always sourced from the latest workspace version.
+if (fs.existsSync(apiSrc)) {
+  fs.rmSync(apiDest, { recursive: true, force: true });
+  fs.cpSync(apiSrc, apiDest, { recursive: true, force: true });
 }
 
 if (fs.existsSync(vendorSrc)) {
