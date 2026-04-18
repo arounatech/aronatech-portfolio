@@ -22,7 +22,7 @@ export default function Hero() {
   const metrics = [
     { label: "Projects Shipped", value: `${projects.length}+` },
     { label: "Technologies", value: `${totalSkills}+` },
-    { label: "Core Focus", value: "DevSecOps" },
+    { label: "Core Focus", value: "Full Stack Developer" },
   ];
 
   return (
