@@ -216,7 +216,69 @@ input, textarea {
   background: rgba(108, 99, 255, 0.6);
 }
 
-/* ── Animate.css overrides ───────────────────────────────────── */
-.animate__animated {
-  --animate-duration: 0.8s;
+/* ── Lightweight reveal animations ───────────────────────────── */
+.reveal {
+  --delay: 0ms;
+  opacity: 0;
+  transition:
+    transform 0.7s var(--ease) var(--delay),
+    opacity 0.7s var(--ease) var(--delay),
+    filter 0.7s var(--ease) var(--delay);
+  will-change: opacity, transform;
+}
+
+.reveal-up {
+  transform: translate3d(0, 20px, 0);
+  filter: blur(6px);
+}
+
+.reveal-down {
+  transform: translate3d(0, -16px, 0);
+  filter: blur(6px);
+}
+
+.reveal-left {
+  transform: translate3d(-20px, 0, 0);
+}
+
+.reveal-right {
+  transform: translate3d(20px, 0, 0);
+}
+
+.reveal-scale {
+  transform: scale(0.95);
+  filter: blur(4px);
+}
+
+.reveal-fade {
+  transform: none;
+}
+
+.reveal.is-visible {
+  opacity: 1;
+  transform: none;
+  filter: blur(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .blob,
+  .hero__avatar-glow,
+  .reveal,
+  .reveal.is-visible {
+    animation: none !important;
+    transition: none !important;
+    transform: none !important;
+    filter: none !important;
+    opacity: 1 !important;
+  }
 }

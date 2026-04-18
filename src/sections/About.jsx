@@ -10,8 +10,9 @@ export default function About() {
       <div className="container">
         <h2
           className={`section-title ${
-            visible ? "animate__animated animate__fadeInUp" : "anim-hidden"
+            visible ? "reveal reveal-up is-visible" : "reveal reveal-up"
           }`}
+          style={{ "--delay": "40ms" }}
         >
           About Me
         </h2>
@@ -20,18 +21,18 @@ export default function About() {
         <div className="about__content">
           <p
             className={`about__narrative ${
-              visible ? "animate__animated animate__fadeInLeft" : "anim-hidden"
+              visible ? "reveal reveal-left is-visible" : "reveal reveal-left"
             }`}
-            style={{ animationDelay: "0.15s" }}
+            style={{ "--delay": "140ms" }}
           >
             {narrative}
           </p>
 
           <div
             className={`about__highlights ${
-              visible ? "animate__animated animate__fadeInRight" : "anim-hidden"
+              visible ? "reveal reveal-right is-visible" : "reveal reveal-right"
             }`}
-            style={{ animationDelay: "0.25s" }}
+            style={{ "--delay": "220ms" }}
           >
             {highlights.map((item, i) => (
               <div className="about__highlight" key={i}>
