@@ -1,12 +1,16 @@
-import { createElement, useMemo, useState } from "react";
+import { createElement, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import PORTFOLIO from "../config/constants";
 import useInView from "../hooks/useInView";
 import { MapPin, Mail, Github, Linkedin, Send, X, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { sendContactMessage } from "../utils/contactApi";
 
 export default function Contact() {
+  const MODAL_EXIT_MS = 220;
   const [ref, visible] = useInView();
   const { contact, personal } = PORTFOLIO;
+  const modalCloseTimeoutRef = useRef(null);
+  const modalEnterFrameRef = useRef(null);
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -16,6 +20,8 @@ export default function Contact() {
   const [errors, setErrors] = useState({});
   const [modal, setModal] = useState({
     open: false,
+    closing: false,
+    visible: false,
     type: "success",
     title: "",
     message: "",
@@ -33,21 +39,106 @@ export default function Contact() {
     [contact.fields]
   );
 
-  const closeModal = () =>
+  const hideModalImmediate = () =>
     setModal((prev) => ({
       ...prev,
       open: false,
+      closing: false,
+      visible: false,
     }));
 
+  const closeModal = () =>
+    setModal((prev) => {
+      if (!prev.open || prev.closing) return prev;
+      return {
+        ...prev,
+        closing: true,
+      };
+    });
+
   const openModal = ({ type, title, message, details = [] }) => {
+    if (modalCloseTimeoutRef.current) {
+      clearTimeout(modalCloseTimeoutRef.current);
+      modalCloseTimeoutRef.current = null;
+    }
+    if (modalEnterFrameRef.current) {
+      cancelAnimationFrame(modalEnterFrameRef.current);
+      modalEnterFrameRef.current = null;
+    }
     setModal({
       open: true,
+      closing: false,
+      visible: false,
       type,
       title,
       message,
       details,
     });
+    modalEnterFrameRef.current = requestAnimationFrame(() => {
+      modalEnterFrameRef.current = requestAnimationFrame(() => {
+        setModal((prev) =>
+          prev.open && !prev.closing
+            ? {
+                ...prev,
+                visible: true,
+              }
+            : prev
+        );
+      });
+    });
   };
+
+  useEffect(() => {
+    if (!modal.open) return undefined;
+    const { overflow: previousOverflow } = document.body.style;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [modal.open]);
+
+  useEffect(() => {
+    if (!modal.open) return undefined;
+    const onKeyDown = (event) => {
+      if (event.key === "Escape") {
+        closeModal();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [modal.open]);
+
+  useEffect(() => {
+    if (!modal.closing) return undefined;
+    modalCloseTimeoutRef.current = setTimeout(() => {
+      setModal((prev) => ({
+        ...prev,
+        open: false,
+        closing: false,
+        visible: false,
+      }));
+      modalCloseTimeoutRef.current = null;
+    }, MODAL_EXIT_MS);
+
+    return () => {
+      if (modalCloseTimeoutRef.current) {
+        clearTimeout(modalCloseTimeoutRef.current);
+        modalCloseTimeoutRef.current = null;
+      }
+    };
+  }, [modal.closing, MODAL_EXIT_MS]);
+
+  useEffect(
+    () => () => {
+      if (modalCloseTimeoutRef.current) {
+        clearTimeout(modalCloseTimeoutRef.current);
+      }
+      if (modalEnterFrameRef.current) {
+        cancelAnimationFrame(modalEnterFrameRef.current);
+      }
+    },
+    []
+  );
 
   const onFieldChange = (event) => {
     const { name, value } = event.target;
@@ -114,7 +205,7 @@ export default function Contact() {
 
   const onSubmit = async (event) => {
     event.preventDefault();
-    closeModal();
+    hideModalImmediate();
 
     const { next: nextErrors, issues } = validate();
     setErrors(nextErrors);
@@ -168,6 +259,69 @@ export default function Contact() {
     { icon: Github, label: "GitHub", href: personal.socials.github },
     { icon: Linkedin, label: "LinkedIn", href: personal.socials.linkedin },
   ];
+
+  const modalContent =
+    modal.open &&
+    createPortal(
+      <div
+        className={[
+          "contact-modal__backdrop",
+          modal.closing ? "contact-modal__backdrop--closing" : "",
+          modal.visible ? "contact-modal__backdrop--open" : "",
+        ]
+          .filter(Boolean)
+          .join(" ")}
+        role="dialog"
+        aria-modal="true"
+        aria-label={modal.title}
+        onClick={(event) => {
+          if (event.target === event.currentTarget) {
+            closeModal();
+          }
+        }}
+      >
+        <div
+          className={[
+            "contact-modal",
+            `contact-modal--${modal.type}`,
+            modal.closing ? "contact-modal--closing" : "",
+            modal.visible ? "contact-modal--open" : "",
+          ]
+            .filter(Boolean)
+            .join(" ")}
+        >
+          <button
+            type="button"
+            className="contact-modal__close"
+            onClick={closeModal}
+            aria-label="Close modal"
+          >
+            <X size={18} />
+          </button>
+
+          <div className="contact-modal__icon" aria-hidden="true">
+            {modal.type === "success" ? <CheckCircle2 size={24} /> : <AlertTriangle size={24} />}
+          </div>
+          <h3 className="contact-modal__title">{modal.title}</h3>
+          <p className="contact-modal__message">{modal.message}</p>
+          {modal.details.length > 0 && (
+            <ul className="contact-modal__list">
+              {modal.details.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
+          )}
+          <button
+            type="button"
+            className="glass-btn glass-btn--accent contact-modal__action"
+            onClick={closeModal}
+          >
+            Got it
+          </button>
+        </div>
+      </div>,
+      document.body
+    );
 
   return (
     <section id="contact" className="section" ref={ref}>
@@ -321,40 +475,7 @@ export default function Contact() {
         </div>
       </div>
 
-      {modal.open && (
-        <div className="contact-modal__backdrop" role="dialog" aria-modal="true" aria-label={modal.title}>
-          <div className={`contact-modal contact-modal--${modal.type}`}>
-            <button
-              type="button"
-              className="contact-modal__close"
-              onClick={closeModal}
-              aria-label="Close modal"
-            >
-              <X size={18} />
-            </button>
-
-            <div className="contact-modal__icon" aria-hidden="true">
-              {modal.type === "success" ? <CheckCircle2 size={24} /> : <AlertTriangle size={24} />}
-            </div>
-            <h3 className="contact-modal__title">{modal.title}</h3>
-            <p className="contact-modal__message">{modal.message}</p>
-            {modal.details.length > 0 && (
-              <ul className="contact-modal__list">
-                {modal.details.map((item) => (
-                  <li key={item}>{item}</li>
-                ))}
-              </ul>
-            )}
-            <button
-              type="button"
-              className="glass-btn glass-btn--accent contact-modal__action"
-              onClick={closeModal}
-            >
-              Got it
-            </button>
-          </div>
-        </div>
-      )}
+      {modalContent}
     </section>
   );
 }
