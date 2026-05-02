@@ -36,6 +36,17 @@ const required = [
     required: false,
     defaultValue: "AronaTech Portfolio",
   },
+  {
+    key: "MAIL_OWNER_ADDRESS",
+    label: "Owner inbox email (comma separated for multiple recipients)",
+    required: false,
+  },
+  {
+    key: "MAIL_OWNER_NAME",
+    label: "Owner display name",
+    required: false,
+    defaultValue: "AronaTech Owner",
+  },
   { key: "MAIL_SITE_NAME", label: "Site/brand name", required: false, defaultValue: "AronaTech Portfolio" },
   { key: "MAIL_SITE_URL", label: "Site URL", required: false, defaultValue: "https://aronatech.cloud" },
   {

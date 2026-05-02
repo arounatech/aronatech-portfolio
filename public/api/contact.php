@@ -260,6 +260,8 @@ $smtpEncryption = strtolower(envValue('MAIL_ENCRYPTION', 'none'));
 $smtpAuth = envBool('MAIL_SMTP_AUTH', false);
 $fromAddress = envValue('MAIL_FROM_ADDRESS', $smtpUser);
 $fromName = envValue('MAIL_FROM_NAME', 'AronaTech Portfolio');
+$ownerAddressesRaw = envValue('MAIL_OWNER_ADDRESS', $fromAddress);
+$ownerName = envValue('MAIL_OWNER_NAME', $fromName);
 $siteName = envValue('MAIL_SITE_NAME', 'AronaTech Portfolio');
 $siteUrl = envValue('MAIL_SITE_URL', 'https://' . ($_SERVER['HTTP_HOST'] ?? 'localhost'));
 
@@ -269,6 +271,11 @@ if ($smtpHost === '' || $fromAddress === '') {
 
 if ($smtpAuth && ($smtpUser === '' || $smtpPass === '')) {
     failResponse(500, 'SMTP auth is enabled but username/password are missing.');
+}
+
+$ownerAddresses = array_values(array_filter(array_map('trim', explode(',', $ownerAddressesRaw))));
+if (empty($ownerAddresses)) {
+    $ownerAddresses = [$fromAddress];
 }
 
 try {
@@ -323,7 +330,9 @@ try {
     $ownerMailer = new \PHPMailer\PHPMailer\PHPMailer(true);
     $configureMailer($ownerMailer);
     $ownerMailer->setFrom($fromAddress, $fromName);
-    $ownerMailer->addAddress($fromAddress, $fromName);
+    foreach ($ownerAddresses as $ownerAddress) {
+        $ownerMailer->addAddress($ownerAddress, $ownerName);
+    }
     $ownerMailer->addReplyTo($email, $name);
     $ownerMailer->Subject = '[Portfolio Contact] ' . $subject;
     $ownerMailer->isHTML(true);

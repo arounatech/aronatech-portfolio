@@ -3,7 +3,7 @@
         'name' => 'aronatech/portfolio-contact-api',
         'pretty_version' => 'dev-develop',
         'version' => 'dev-develop',
-        'reference' => '5ffb1cc8d3b9c88e0630f5f3ba3b6127d3f8ea7b',
+        'reference' => '2c346d6504cf7cbaef82c080e4e1aec8d35550b7',
         'type' => 'project',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -13,7 +13,7 @@
         'aronatech/portfolio-contact-api' => array(
             'pretty_version' => 'dev-develop',
             'version' => 'dev-develop',
-            'reference' => '5ffb1cc8d3b9c88e0630f5f3ba3b6127d3f8ea7b',
+            'reference' => '2c346d6504cf7cbaef82c080e4e1aec8d35550b7',
             'type' => 'project',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),
